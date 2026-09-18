@@ -5,6 +5,7 @@ const FavoritesContext = createContext();
 
 const FAVORITES_STORAGE_KEY = 'spider_hero_favorites';
 const TEAM_STORAGE_KEY = 'spider_hero_team';
+const COMPARE_STORAGE_KEY = 'spider_hero_compare';
 
 export const FavoritesProvider = ({ children }) => {
   // 1. FAVORITOS
@@ -30,7 +31,14 @@ export const FavoritesProvider = ({ children }) => {
   });
 
   // 3. COMPARADOR (VERSUS ARENA - MAX 2)
-  const [compareHeroes, setCompareHeroes] = useState([]);
+  const [compareHeroes, setCompareHeroes] = useState(() => {
+    try {
+      const stored = localStorage.getItem(COMPARE_STORAGE_KEY);
+      return stored ? JSON.parse(stored) : [];
+    } catch {
+      return [];
+    }
+  });
   const [isCompareModalOpen, setIsCompareModalOpen] = useState(false);
 
   // Persistir favoritos
@@ -50,6 +58,13 @@ export const FavoritesProvider = ({ children }) => {
       console.error('Error al guardar equipo:', error);
     }
   }, [team]);
+
+  // Persistir versus
+  useEffect(() => {
+    try {
+      localStorage.setItem(COMPARE_STORAGE_KEY, JSON.stringify(compareHeroes));
+    } catch {}
+  }, [compareHeroes]);
 
   // Métodos de Favoritos
   const toggleFavorite = (hero) => {
@@ -110,11 +125,22 @@ export const FavoritesProvider = ({ children }) => {
         return prev.filter((h) => h.id !== hero.id);
       }
       if (prev.length >= 2) {
-        // Reemplazar el segundo
         return [prev[0], hero];
       }
-      return [...prev, hero];
+      const next = [...prev, hero];
+      if (next.length === 2) {
+        setIsCompareModalOpen(true);
+      }
+      return next;
     });
+  };
+
+  const setFighter1 = (hero) => {
+    setCompareHeroes((prev) => [hero, prev[1] || null].filter(Boolean));
+  };
+
+  const setFighter2 = (hero) => {
+    setCompareHeroes((prev) => [prev[0] || null, hero].filter(Boolean));
   };
 
   const isComparing = (heroId) => compareHeroes.some((h) => h.id === heroId);
@@ -171,6 +197,8 @@ export const FavoritesProvider = ({ children }) => {
         teamPowerAverage,
         compareHeroes,
         toggleCompare,
+        setFighter1,
+        setFighter2,
         isComparing,
         clearCompare,
         isCompareModalOpen,

@@ -1,16 +1,27 @@
 // src/components/heroes/CompareModal.jsx
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useFavorites } from '../../context/FavoritesContext';
 import RadarChart from '../ui/RadarChart';
 import BattleSimulator from './BattleSimulator';
 
-export const CompareModal = ({ isOpen, onClose }) => {
-  const { compareHeroes, clearCompare, toggleCompare } = useFavorites();
+export const CompareModal = ({ isOpen, onClose, heroes = [] }) => {
+  const { compareHeroes, clearCompare, toggleCompare, setFighter1, setFighter2 } = useFavorites();
   const [activeTab, setActiveTab] = useState('stats'); // 'stats' | 'simulator'
+
+  // Búsqueda interna dentro del modal para seleccionar luchadores
+  const [searchFighter1, setSearchFighter1] = useState('');
+  const [searchFighter2, setSearchFighter2] = useState('');
+  const [selectingSlot, setSelectingSlot] = useState(null); // null | 1 | 2
 
   useEffect(() => {
     const handleKeyDown = (e) => {
-      if (e.key === 'Escape') onClose();
+      if (e.key === 'Escape') {
+        if (selectingSlot) {
+          setSelectingSlot(null);
+        } else {
+          onClose();
+        }
+      }
     };
     if (isOpen) {
       document.body.style.overflow = 'hidden';
@@ -20,11 +31,22 @@ export const CompareModal = ({ isOpen, onClose }) => {
       document.body.style.overflow = 'auto';
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [isOpen, onClose]);
+  }, [isOpen, onClose, selectingSlot]);
+
+  // Si no hay héroes seleccionados al abrir, inicializar con 2 sugeridos si hay catálogo
+  useEffect(() => {
+    if (isOpen && compareHeroes.length === 0 && heroes.length >= 2) {
+      const spider = heroes.find((h) => h.name.toLowerCase().includes('spider-man')) || heroes[0];
+      const rival = heroes.find((h) => h.name.toLowerCase().includes('venom')) || heroes[1];
+      setFighter1(spider);
+      setFighter2(rival);
+    }
+  }, [isOpen, heroes]);
 
   if (!isOpen) return null;
 
-  const [hero1, hero2] = compareHeroes;
+  const hero1 = compareHeroes[0] || null;
+  const hero2 = compareHeroes[1] || null;
 
   const statsList = [
     { key: 'intelligence', label: 'Inteligencia' },
@@ -52,6 +74,14 @@ export const CompareModal = ({ isOpen, onClose }) => {
 
   const winner = getWinner();
 
+  const handlePickRandom = (slot) => {
+    if (heroes.length === 0) return;
+    const random = heroes[Math.floor(Math.random() * heroes.length)];
+    if (slot === 1) setFighter1(random);
+    else setFighter2(random);
+    setSelectingSlot(null);
+  };
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 md:p-6 bg-black/85 backdrop-blur-xl animate-fade-in"
@@ -72,7 +102,7 @@ export const CompareModal = ({ isOpen, onClose }) => {
                 Arena del Multiverso — <span className="text-red-500">Versus Mode</span>
               </h2>
               <p className="text-xs text-neutral-400 font-mono">
-                Comparativa de datos y simulación de combate por turnos
+                Comparativa de datos y simulación de combate en tiempo real
               </p>
             </div>
           </div>
@@ -115,7 +145,148 @@ export const CompareModal = ({ isOpen, onClose }) => {
           </div>
         </div>
 
-        {/* Contenido */}
+        {/* Modal interno para seleccionar luchador */}
+        {selectingSlot && (
+          <div className="mb-6 p-4 bg-neutral-900 rounded-2xl border border-neutral-700 animate-slide-up">
+            <div className="flex items-center justify-between mb-3">
+              <h4 className="text-xs font-mono font-bold text-white uppercase">
+                Seleccionar Luchador {selectingSlot} ({selectingSlot === 1 ? 'Rincón Rojo' : 'Rincón Azul'})
+              </h4>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => handlePickRandom(selectingSlot)}
+                  className="px-2.5 py-1 bg-amber-600/30 hover:bg-amber-600/50 text-amber-300 text-xs font-mono rounded-lg border border-amber-500/50"
+                  type="button"
+                >
+                  🎲 Aleatorio
+                </button>
+                <button
+                  onClick={() => setSelectingSlot(null)}
+                  className="text-neutral-400 hover:text-white text-xs"
+                  type="button"
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+
+            <input
+              type="text"
+              placeholder="Buscar héroe o villano..."
+              value={selectingSlot === 1 ? searchFighter1 : searchFighter2}
+              onChange={(e) => {
+                if (selectingSlot === 1) setSearchFighter1(e.target.value);
+                else setSearchFighter2(e.target.value);
+              }}
+              className="w-full px-3 py-2 bg-neutral-950 border border-neutral-700 rounded-xl text-white text-xs font-mono mb-3 focus:outline-none focus:border-red-500"
+            />
+
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 max-h-48 overflow-y-auto pr-1">
+              {heroes
+                .filter((h) => {
+                  const query = (selectingSlot === 1 ? searchFighter1 : searchFighter2).toLowerCase();
+                  return !query || h.name.toLowerCase().includes(query) || h.biography?.publisher?.toLowerCase().includes(query);
+                })
+                .slice(0, 12)
+                .map((h) => (
+                  <button
+                    key={h.id}
+                    onClick={() => {
+                      if (selectingSlot === 1) setFighter1(h);
+                      else setFighter2(h);
+                      setSelectingSlot(null);
+                    }}
+                    className="flex items-center gap-2 p-1.5 rounded-xl bg-neutral-950/80 border border-neutral-800 hover:border-red-500 text-left transition-colors truncate"
+                  >
+                    <img src={h.images?.sm} alt="" className="w-8 h-8 rounded-lg object-cover" />
+                    <div className="truncate">
+                      <span className="text-xs font-bold text-white block truncate">{h.name}</span>
+                      <span className="text-[10px] text-neutral-500 block truncate">{h.biography?.publisher}</span>
+                    </div>
+                  </button>
+                ))}
+            </div>
+          </div>
+        )}
+
+        {/* Luchadores Frente a Frente */}
+        <div className="grid grid-cols-2 gap-4 sm:gap-8 items-center mb-6">
+          {/* Luchador 1 */}
+          <div className="flex flex-col items-center text-center p-3 bg-neutral-900/60 rounded-2xl border border-red-900/40 relative">
+            <span className="text-[10px] font-mono font-bold text-red-400 uppercase tracking-widest mb-1">
+              Rincón Rojo
+            </span>
+            {hero1 ? (
+              <>
+                <div className="w-20 h-20 sm:w-28 sm:h-28 rounded-2xl overflow-hidden mb-2 border-2 border-red-500 shadow-md shadow-red-600/30">
+                  <img
+                    src={hero1.images?.md || hero1.images?.sm}
+                    alt={hero1.name}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+                <h4 className="text-sm sm:text-base font-black text-white truncate max-w-full">
+                  {hero1.name}
+                </h4>
+                <span className="text-xs text-red-400 font-mono">{total1} pts</span>
+                <button
+                  onClick={() => setSelectingSlot(1)}
+                  className="mt-2 text-[11px] text-neutral-400 hover:text-red-400 font-mono underline"
+                >
+                  Cambiar peleador
+                </button>
+              </>
+            ) : (
+              <div className="py-4">
+                <button
+                  onClick={() => setSelectingSlot(1)}
+                  className="px-4 py-2 bg-red-600/30 hover:bg-red-600/50 text-red-300 font-mono text-xs rounded-xl border border-red-500/50 font-bold"
+                >
+                  + Elegir Luchador 1
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Luchador 2 */}
+          <div className="flex flex-col items-center text-center p-3 bg-neutral-900/60 rounded-2xl border border-blue-900/40 relative">
+            <span className="text-[10px] font-mono font-bold text-blue-400 uppercase tracking-widest mb-1">
+              Rincón Azul
+            </span>
+            {hero2 ? (
+              <>
+                <div className="w-20 h-20 sm:w-28 sm:h-28 rounded-2xl overflow-hidden mb-2 border-2 border-blue-500 shadow-md shadow-blue-600/30">
+                  <img
+                    src={hero2.images?.md || hero2.images?.sm}
+                    alt={hero2.name}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+                <h4 className="text-sm sm:text-base font-black text-white truncate max-w-full">
+                  {hero2.name}
+                </h4>
+                <span className="text-xs text-blue-400 font-mono">{total2} pts</span>
+                <button
+                  onClick={() => setSelectingSlot(2)}
+                  className="mt-2 text-[11px] text-neutral-400 hover:text-blue-400 font-mono underline"
+                >
+                  Cambiar peleador
+                </button>
+              </>
+            ) : (
+              <div className="py-4">
+                <button
+                  onClick={() => setSelectingSlot(2)}
+                  className="px-4 py-2 bg-blue-600/30 hover:bg-blue-600/50 text-blue-300 font-mono text-xs rounded-xl border border-blue-500/50 font-bold"
+                >
+                  + Elegir Luchador 2
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Contenido Principal (si ambos están presentes) */}
         {hero1 && hero2 ? (
           <div>
             {activeTab === 'stats' ? (
@@ -132,37 +303,6 @@ export const CompareModal = ({ isOpen, onClose }) => {
                   </h3>
                 </div>
 
-                {/* Luchadores */}
-                <div className="grid grid-cols-2 gap-4 sm:gap-8 items-center mb-6">
-                  <div className="flex flex-col items-center text-center p-3 bg-neutral-900/60 rounded-2xl border border-red-900/40">
-                    <div className="w-20 h-20 sm:w-28 sm:h-28 rounded-2xl overflow-hidden mb-2 border-2 border-red-500 shadow-md shadow-red-600/30">
-                      <img
-                        src={hero1.images?.md || hero1.images?.sm}
-                        alt={hero1.name}
-                        className="w-full h-full object-cover"
-                      />
-                    </div>
-                    <h4 className="text-sm sm:text-base font-black text-white truncate max-w-full">
-                      {hero1.name}
-                    </h4>
-                    <span className="text-xs text-red-400 font-mono">{total1} pts</span>
-                  </div>
-
-                  <div className="flex flex-col items-center text-center p-3 bg-neutral-900/60 rounded-2xl border border-blue-900/40">
-                    <div className="w-20 h-20 sm:w-28 sm:h-28 rounded-2xl overflow-hidden mb-2 border-2 border-blue-500 shadow-md shadow-blue-600/30">
-                      <img
-                        src={hero2.images?.md || hero2.images?.sm}
-                        alt={hero2.name}
-                        className="w-full h-full object-cover"
-                      />
-                    </div>
-                    <h4 className="text-sm sm:text-base font-black text-white truncate max-w-full">
-                      {hero2.name}
-                    </h4>
-                    <span className="text-xs text-blue-400 font-mono">{total2} pts</span>
-                  </div>
-                </div>
-
                 {/* Gráfica de Telaraña Comparativa & Barras */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center bg-neutral-900/40 p-4 sm:p-6 rounded-2xl border border-neutral-800">
                   {/* Radar Poligonal Superpuesto */}
@@ -176,8 +316,8 @@ export const CompareModal = ({ isOpen, onClose }) => {
                   {/* Barras Comparativas */}
                   <div className="space-y-3">
                     {statsList.map((stat) => {
-                      const val1 = hero1.powerstats?.[stat.key] || 0;
-                      const val2 = hero2.powerstats?.[stat.key] || 0;
+                      const val1 = Number(hero1.powerstats?.[stat.key]) || 0;
+                      const val2 = Number(hero2.powerstats?.[stat.key]) || 0;
                       const winner1 = val1 > val2;
                       const winner2 = val2 > val1;
 
@@ -221,22 +361,21 @@ export const CompareModal = ({ isOpen, onClose }) => {
             )}
           </div>
         ) : (
-          <div className="text-center py-12 px-4">
-            <div className="w-16 h-16 rounded-full bg-neutral-900 border border-neutral-800 flex items-center justify-center text-2xl mx-auto mb-4">
-              ⚔️
-            </div>
-            <h3 className="text-lg font-bold text-white mb-2">
-              Selecciona {hero1 ? '1 luchador más' : '2 superhéroes'} para la Batalla
-            </h3>
-            <p className="text-xs text-neutral-400 max-w-md mx-auto mb-6">
-              Haz clic en el botón <strong className="text-red-400 font-mono">"VS"</strong> en cualquier tarjeta de héroe para agregarlo a la arena y compararlos en tiempo real.
+          <div className="text-center py-6 px-4">
+            <p className="text-xs text-neutral-400 font-mono mb-4">
+              Selecciona dos personajes arriba para comparar sus habilidades o simular un combate.
             </p>
-            <button
-              onClick={onClose}
-              className="px-6 py-2.5 bg-gradient-to-r from-red-600 to-blue-600 text-white font-bold rounded-xl text-xs uppercase tracking-wider transition-transform hover:scale-105"
-            >
-              Explorar Directorio
-            </button>
+            <div className="flex items-center justify-center gap-3">
+              <button
+                onClick={() => {
+                  handlePickRandom(1);
+                  handlePickRandom(2);
+                }}
+                className="px-5 py-2.5 bg-gradient-to-r from-red-600 to-blue-600 text-white font-bold rounded-xl text-xs uppercase font-mono tracking-wider shadow-md hover:scale-105 transition-all"
+              >
+                🎲 Emparejar 2 Héroes al Azar
+              </button>
+            </div>
           </div>
         )}
       </div>

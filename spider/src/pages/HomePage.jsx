@@ -314,6 +314,7 @@ export const HomePage = () => {
       <CompareModal
         isOpen={isCompareModalOpen}
         onClose={() => setIsCompareModalOpen(false)}
+        heroes={heroes}
       />
 
       {/* Drawer Escuadrón del Multiverso */}

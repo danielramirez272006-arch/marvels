@@ -1,9 +1,11 @@
 // src/components/heroes/HeroCard.jsx
 import React from 'react';
 import { useFavorites } from '../../context/FavoritesContext';
+import { useToast } from '../../context/ToastContext';
 
 export const HeroCard = ({ hero, onSelect }) => {
   const { isFavorite, toggleFavorite, isInTeam, addToTeam, isComparing, toggleCompare } = useFavorites();
+  const { showToast } = useToast();
 
   const favorite = isFavorite(hero.id);
   const inTeam = isInTeam(hero.id);
@@ -17,6 +19,36 @@ export const HeroCard = ({ hero, onSelect }) => {
         return 'bg-red-900/70 text-red-300 border-red-500/50';
       default:
         return 'bg-neutral-800/80 text-neutral-300 border-neutral-600/50';
+    }
+  };
+
+  const handleToggleCompare = (e) => {
+    e.stopPropagation();
+    toggleCompare(hero);
+    if (!comparing) {
+      showToast(`⚔️ ${hero.name} listo para la Arena Versus`, 'info');
+    } else {
+      showToast(`${hero.name} retirado de la Arena`, 'info');
+    }
+  };
+
+  const handleToggleFavorite = (e) => {
+    e.stopPropagation();
+    toggleFavorite(hero);
+    if (!favorite) {
+      showToast(`❤️ ${hero.name} agregado a favoritos`, 'success');
+    } else {
+      showToast(`${hero.name} eliminado de favoritos`, 'info');
+    }
+  };
+
+  const handleToggleTeam = (e) => {
+    e.stopPropagation();
+    const res = addToTeam(hero);
+    if (res.success) {
+      showToast(res.message, 'success');
+    } else {
+      showToast(res.message, 'warning');
     }
   };
 
@@ -38,10 +70,7 @@ export const HeroCard = ({ hero, onSelect }) => {
         <div className="absolute top-3 right-3 flex items-center gap-1.5">
           {/* Botón VS (Comparar) */}
           <button
-            onClick={(e) => {
-              e.stopPropagation();
-              toggleCompare(hero);
-            }}
+            onClick={handleToggleCompare}
             className={`p-2 rounded-xl backdrop-blur-md border text-xs font-black transition-all ${
               comparing
                 ? 'bg-blue-600 text-white border-blue-400 scale-110 shadow-lg shadow-blue-600/50'
@@ -55,10 +84,7 @@ export const HeroCard = ({ hero, onSelect }) => {
 
           {/* Botón Favorito */}
           <button
-            onClick={(e) => {
-              e.stopPropagation();
-              toggleFavorite(hero);
-            }}
+            onClick={handleToggleFavorite}
             className={`p-2 rounded-xl backdrop-blur-md border transition-all ${
               favorite
                 ? 'bg-red-600 text-white border-red-400 scale-110 shadow-lg shadow-red-600/50'
@@ -129,7 +155,7 @@ export const HeroCard = ({ hero, onSelect }) => {
         <div className="grid grid-cols-2 gap-2">
           {/* Botón Reclutar a Equipo */}
           <button
-            onClick={() => addToTeam(hero)}
+            onClick={handleToggleTeam}
             type="button"
             className={`py-2 px-2 text-[11px] font-bold uppercase rounded-xl border transition-all truncate flex items-center justify-center gap-1 ${
               inTeam

@@ -1,9 +1,11 @@
 // src/components/heroes/HeroTableView.jsx
 import React from 'react';
 import { useFavorites } from '../../context/FavoritesContext';
+import { useToast } from '../../context/ToastContext';
 
 export const HeroTableView = ({ heroes, onSelectHero }) => {
   const { isFavorite, toggleFavorite, isInTeam, addToTeam, isComparing, toggleCompare } = useFavorites();
+  const { showToast } = useToast();
 
   const getAlignmentBadge = (alignment) => {
     switch (alignment) {
@@ -19,12 +21,12 @@ export const HeroTableView = ({ heroes, onSelectHero }) => {
   const getStatTotal = (stats) => {
     if (!stats) return 0;
     return (
-      (stats.intelligence || 0) +
-      (stats.strength || 0) +
-      (stats.speed || 0) +
-      (stats.durability || 0) +
-      (stats.power || 0) +
-      (stats.combat || 0)
+      (Number(stats.intelligence) || 0) +
+      (Number(stats.strength) || 0) +
+      (Number(stats.speed) || 0) +
+      (Number(stats.durability) || 0) +
+      (Number(stats.power) || 0) +
+      (Number(stats.combat) || 0)
     );
   };
 
@@ -117,7 +119,10 @@ export const HeroTableView = ({ heroes, onSelectHero }) => {
                   <div className="flex items-center justify-center gap-1.5">
                     {/* Botón Favorito */}
                     <button
-                      onClick={() => toggleFavorite(hero)}
+                      onClick={() => {
+                        toggleFavorite(hero);
+                        showToast(favorite ? `${hero.name} eliminado de favoritos` : `❤️ ${hero.name} agregado a favoritos`, 'success');
+                      }}
                       className={`p-1.5 rounded-lg border transition-all ${
                         favorite
                           ? 'bg-red-600 text-white border-red-400'
@@ -131,7 +136,10 @@ export const HeroTableView = ({ heroes, onSelectHero }) => {
 
                     {/* Botón Equipo */}
                     <button
-                      onClick={() => addToTeam(hero)}
+                      onClick={() => {
+                        const res = addToTeam(hero);
+                        showToast(res.message, res.success ? 'success' : 'warning');
+                      }}
                       className={`px-2 py-1 rounded-lg border text-[11px] font-bold transition-all ${
                         inTeam
                           ? 'bg-blue-600/40 text-blue-300 border-blue-500'
@@ -145,7 +153,10 @@ export const HeroTableView = ({ heroes, onSelectHero }) => {
 
                     {/* Botón VS */}
                     <button
-                      onClick={() => toggleCompare(hero)}
+                      onClick={() => {
+                        toggleCompare(hero);
+                        showToast(comparing ? `${hero.name} retirado de la Arena` : `⚔️ ${hero.name} listo para la Arena Versus`, 'info');
+                      }}
                       className={`px-2 py-1 rounded-lg border text-[11px] font-bold transition-all ${
                         comparing
                           ? 'bg-purple-600 text-white border-purple-400'

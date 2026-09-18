@@ -2,10 +2,11 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { playHit, playVictory } from '../../utils/soundEffects';
 
-export const BattleSimulator = ({ hero1, hero2, onReset }) => {
+export const BattleSimulator = ({ hero1, hero2 }) => {
   const getInitialHp = (hero) => {
-    const dur = hero.powerstats?.durability || 50;
-    const str = hero.powerstats?.strength || 50;
+    if (!hero) return 500;
+    const dur = Number(hero.powerstats?.durability) || 50;
+    const str = Number(hero.powerstats?.strength) || 50;
     return dur * 8 + str * 4 + 300;
   };
 
@@ -21,35 +22,45 @@ export const BattleSimulator = ({ hero1, hero2, onReset }) => {
 
   const logsEndRef = useRef(null);
 
+  // Reiniciar combate automáticamente al cambiar cualquiera de los luchadores
+  useEffect(() => {
+    setHp1(getInitialHp(hero1));
+    setHp2(getInitialHp(hero2));
+    setBattleLogs([]);
+    setTurn(1);
+    setIsFighting(false);
+    setWinner(null);
+  }, [hero1?.id, hero2?.id]);
+
   useEffect(() => {
     logsEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [battleLogs]);
 
   // Ejecutar un turno de combate
   const executeTurn = () => {
-    if (winner || hp1 <= 0 || hp2 <= 0) return;
+    if (winner || hp1 <= 0 || hp2 <= 0 || !hero1 || !hero2) return;
 
     // Determinar quién ataca en este turno
     const attacker = turn % 2 !== 0 ? hero1 : hero2;
     const defender = turn % 2 !== 0 ? hero2 : hero1;
     const isHero1Attacker = attacker.id === hero1.id;
 
-    const atkSpeed = attacker.powerstats?.speed || 50;
-    const defSpeed = defender.powerstats?.speed || 50;
-    const atkStr = attacker.powerstats?.strength || 50;
-    const atkPwr = attacker.powerstats?.power || 50;
-    const atkCmb = attacker.powerstats?.combat || 50;
-    const defDur = defender.powerstats?.durability || 50;
+    const atkSpeed = Number(attacker.powerstats?.speed) || 50;
+    const defSpeed = Number(defender.powerstats?.speed) || 50;
+    const atkStr = Number(attacker.powerstats?.strength) || 50;
+    const atkPwr = Number(attacker.powerstats?.power) || 50;
+    const atkCmb = Number(attacker.powerstats?.combat) || 50;
+    const defDur = Number(defender.powerstats?.durability) || 50;
 
     // Probabilidad de esquivar
-    const dodgeChance = Math.max(5, Math.min(40, (defSpeed - atkSpeed) / 2 + 10));
+    const dodgeChance = Math.max(5, Math.min(35, (defSpeed - atkSpeed) / 2 + 10));
     const didDodge = Math.random() * 100 < dodgeChance;
 
     if (didDodge) {
       setBattleLogs((prev) => [
         ...prev,
         {
-          id: Date.now(),
+          id: Date.now() + Math.random(),
           text: `💨 ¡${defender.name} usa sus reflejos y esquiva el ataque de ${attacker.name}!`,
           type: 'dodge',
         },
@@ -66,48 +77,52 @@ export const BattleSimulator = ({ hero1, hero2, onReset }) => {
     const baseDmg = atkStr * 0.8 + atkPwr * 0.6;
     const defenseReduction = defDur * 0.3;
     const variance = Math.random() * 20 - 10;
-    let finalDamage = Math.max(15, Math.round((baseDmg - defenseReduction + variance) * (isCrit ? 1.7 : 1)));
+    const finalDamage = Math.max(20, Math.round((baseDmg - defenseReduction + variance) * (isCrit ? 1.6 : 1)));
 
     playHit();
 
     if (isHero1Attacker) {
-      const nextHp = Math.max(0, hp2 - finalDamage);
-      setHp2(nextHp);
+      setHp2((currentHp2) => {
+        const nextHp = Math.max(0, currentHp2 - finalDamage);
+        if (nextHp <= 0) {
+          setWinner(hero1);
+          setIsFighting(false);
+          playVictory();
+        }
+        return nextHp;
+      });
+
       setBattleLogs((prev) => [
         ...prev,
         {
-          id: Date.now(),
-          text: `💥 ${attacker.name} impacta a ${defender.name} infligiendo ${finalDamage} de daño ${
+          id: Date.now() + Math.random(),
+          text: `💥 ${attacker.name} impacta a ${defender.name} con ${finalDamage} de daño ${
             isCrit ? '¡GOLPE CRÍTICO!' : ''
           }`,
           type: isCrit ? 'crit' : 'hit',
         },
       ]);
-
-      if (nextHp <= 0) {
-        setWinner(hero1);
-        setIsFighting(false);
-        playVictory();
-      }
     } else {
-      const nextHp = Math.max(0, hp1 - finalDamage);
-      setHp1(nextHp);
+      setHp1((currentHp1) => {
+        const nextHp = Math.max(0, currentHp1 - finalDamage);
+        if (nextHp <= 0) {
+          setWinner(hero2);
+          setIsFighting(false);
+          playVictory();
+        }
+        return nextHp;
+      });
+
       setBattleLogs((prev) => [
         ...prev,
         {
-          id: Date.now(),
-          text: `⚡ ${attacker.name} arremete contra ${defender.name} infligiendo ${finalDamage} de daño ${
+          id: Date.now() + Math.random(),
+          text: `⚡ ${attacker.name} arremete contra ${defender.name} con ${finalDamage} de daño ${
             isCrit ? '¡GOLPE CRÍTICO!' : ''
           }`,
           type: isCrit ? 'crit' : 'hit',
         },
       ]);
-
-      if (nextHp <= 0) {
-        setWinner(hero2);
-        setIsFighting(false);
-        playVictory();
-      }
     }
 
     setTurn((prev) => prev + 1);
@@ -116,13 +131,15 @@ export const BattleSimulator = ({ hero1, hero2, onReset }) => {
   // Simulación automática
   useEffect(() => {
     let interval = null;
-    if (isFighting && !winner) {
+    if (isFighting && !winner && hp1 > 0 && hp2 > 0) {
       interval = setInterval(() => {
         executeTurn();
-      }, 700);
+      }, 750);
     }
-    return () => clearInterval(interval);
-  }, [isFighting, turn, winner, hp1, hp2]);
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [isFighting, turn, winner, hp1, hp2, hero1, hero2]);
 
   const restartBattle = () => {
     setHp1(maxHp1);
@@ -140,7 +157,7 @@ export const BattleSimulator = ({ hero1, hero2, onReset }) => {
         {/* Luchador 1 */}
         <div>
           <div className="flex justify-between items-center text-xs font-mono mb-1">
-            <span className="text-red-400 font-bold truncate max-w-[120px]">{hero1.name}</span>
+            <span className="text-red-400 font-bold truncate max-w-[120px]">{hero1?.name}</span>
             <span className="text-neutral-300">
               {hp1} / {maxHp1} HP
             </span>
@@ -156,7 +173,7 @@ export const BattleSimulator = ({ hero1, hero2, onReset }) => {
         {/* Luchador 2 */}
         <div>
           <div className="flex justify-between items-center text-xs font-mono mb-1">
-            <span className="text-blue-400 font-bold truncate max-w-[120px]">{hero2.name}</span>
+            <span className="text-blue-400 font-bold truncate max-w-[120px]">{hero2?.name}</span>
             <span className="text-neutral-300">
               {hp2} / {maxHp2} HP
             </span>
@@ -174,7 +191,7 @@ export const BattleSimulator = ({ hero1, hero2, onReset }) => {
       <div className="h-44 overflow-y-auto bg-neutral-950 p-3 rounded-xl border border-neutral-800/80 space-y-1.5 font-mono text-xs">
         {battleLogs.length === 0 && (
           <p className="text-neutral-600 text-center py-14">
-            Pulsa "Iniciar Pelea Automática" o "Siguiente Turno" para comenzar el combate.
+            Pulsa "▶️ Iniciar Pelea Automática" o "Siguiente Turno" para comenzar el combate.
           </p>
         )}
         {battleLogs.map((log) => (
@@ -196,8 +213,8 @@ export const BattleSimulator = ({ hero1, hero2, onReset }) => {
 
       {/* Banner de Victoria */}
       {winner && (
-        <div className="p-4 rounded-xl bg-gradient-to-r from-red-600 via-purple-600 to-blue-600 text-white text-center font-black text-lg animate-pulse shadow-lg shadow-red-600/30">
-          🏆 ¡{winner.name} HA VENCIDO EN EL COMBATE!
+        <div className="p-4 rounded-xl bg-gradient-to-r from-red-600 via-purple-600 to-blue-600 text-white text-center font-black text-base sm:text-lg animate-pulse shadow-lg shadow-red-600/30">
+          🏆 ¡{winner.name.toUpperCase()} HA VENCIDO EN EL COMBATE!
         </div>
       )}
 
