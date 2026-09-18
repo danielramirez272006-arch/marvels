@@ -1,10 +1,13 @@
 // src/pages/HomePage.jsx
 import React, { useEffect, useMemo, useState } from 'react';
+import AnalyticsModal from '../components/analytics/AnalyticsModal';
 import CompareModal from '../components/heroes/CompareModal';
+import CustomHeroModal from '../components/heroes/CustomHeroModal';
 import FilterBar from '../components/heroes/FilterBar';
 import HeroCard from '../components/heroes/HeroCard';
 import HeroModal from '../components/heroes/HeroModal';
 import HeroTableView from '../components/heroes/HeroTableView';
+import LeaderboardModal from '../components/heroes/LeaderboardModal';
 import TeamDrawer from '../components/heroes/TeamDrawer';
 import Footer from '../components/layout/Footer';
 import Header from '../components/layout/Header';
@@ -37,6 +40,7 @@ export const HomePage = () => {
     availablePublishers,
     resetFilters,
     getRandomHero,
+    addCustomHero,
   } = useHeroes(12);
 
   const {
@@ -51,6 +55,10 @@ export const HomePage = () => {
   const [isTeamOpen, setIsTeamOpen] = useState(false);
   const [isTriviaOpen, setIsTriviaOpen] = useState(false);
   const [isShortcutsOpen, setIsShortcutsOpen] = useState(false);
+  const [isCustomHeroOpen, setIsCustomHeroOpen] = useState(false);
+  const [isLeaderboardOpen, setIsLeaderboardOpen] = useState(false);
+  const [isAnalyticsOpen, setIsAnalyticsOpen] = useState(false);
+
   const [viewMode, setViewMode] = useState('grid'); // 'grid' | 'table'
   const [selectedHero, setSelectedHero] = useState(null);
   const [favPage, setFavPage] = useState(1);
@@ -105,7 +113,6 @@ export const HomePage = () => {
   // Atajos de teclado globales del Multiverso
   useEffect(() => {
     const handleGlobalKeyDown = (e) => {
-      // Ignorar si el usuario está escribiendo en un input
       if (['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target?.tagName)) {
         return;
       }
@@ -122,6 +129,10 @@ export const HomePage = () => {
         setIsTeamOpen((prev) => !prev);
       } else if (e.key.toLowerCase() === 'r') {
         handleRandomHero();
+      } else if (e.key.toLowerCase() === 'c') {
+        setIsCustomHeroOpen((prev) => !prev);
+      } else if (e.key.toLowerCase() === 'l') {
+        setIsLeaderboardOpen((prev) => !prev);
       } else if (e.key.toLowerCase() === 'm') {
         const res = toggleSound();
         showToast(res ? 'Sonido activado 🔊' : 'Sonido silenciado 🔇', 'info');
@@ -151,6 +162,9 @@ export const HomePage = () => {
         onRandomHero={handleRandomHero}
         onOpenTrivia={() => setIsTriviaOpen(true)}
         onOpenShortcuts={() => setIsShortcutsOpen(true)}
+        onOpenCustomHero={() => setIsCustomHeroOpen(true)}
+        onOpenLeaderboard={() => setIsLeaderboardOpen(true)}
+        onOpenAnalytics={() => setIsAnalyticsOpen(true)}
       />
 
       {/* Contenido Principal */}
@@ -313,6 +327,28 @@ export const HomePage = () => {
       <TriviaModal
         isOpen={isTriviaOpen}
         onClose={() => setIsTriviaOpen(false)}
+        heroes={heroes}
+      />
+
+      {/* Creador de Variantes */}
+      <CustomHeroModal
+        isOpen={isCustomHeroOpen}
+        onClose={() => setIsCustomHeroOpen(false)}
+        onSaveCustomHero={(newHero) => addCustomHero(newHero)}
+      />
+
+      {/* Salón de la Fama / Leaderboard */}
+      <LeaderboardModal
+        isOpen={isLeaderboardOpen}
+        onClose={() => setIsLeaderboardOpen(false)}
+        heroes={heroes}
+        onSelectHero={(hero) => setSelectedHero(hero)}
+      />
+
+      {/* Dashboard de Analítica */}
+      <AnalyticsModal
+        isOpen={isAnalyticsOpen}
+        onClose={() => setIsAnalyticsOpen(false)}
         heroes={heroes}
       />
 

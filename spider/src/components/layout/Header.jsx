@@ -3,7 +3,7 @@ import React, { useRef, useState } from 'react';
 import { useFavorites } from '../../context/FavoritesContext';
 import { useTheme } from '../../context/ThemeContext';
 import { useToast } from '../../context/ToastContext';
-import { isSoundEnabled, toggleSound } from '../../utils/soundEffects';
+import { isMusicPlaying, isSoundEnabled, toggleBackgroundMusic, toggleSound } from '../../utils/soundEffects';
 import SearchBar from '../heroes/SearchBar';
 
 export const Header = ({
@@ -16,17 +16,28 @@ export const Header = ({
   onRandomHero,
   onOpenTrivia,
   onOpenShortcuts,
+  onOpenCustomHero,
+  onOpenLeaderboard,
+  onOpenAnalytics,
 }) => {
   const { favoritesCount, teamCount, compareHeroes, exportData, importData } = useFavorites();
   const { currentTheme, setTheme, themes } = useTheme();
   const { showToast } = useToast();
   const [soundOn, setSoundOn] = useState(isSoundEnabled());
+  const [musicOn, setMusicOn] = useState(isMusicPlaying());
   const fileInputRef = useRef(null);
 
   const handleSoundToggle = () => {
     const newState = toggleSound();
     setSoundOn(newState);
+    if (!newState) setMusicOn(false);
     showToast(newState ? 'Efectos de sonido activados 🔊' : 'Sonido desactivado 🔇', 'info');
+  };
+
+  const handleMusicToggle = () => {
+    const isPlaying = toggleBackgroundMusic();
+    setMusicOn(isPlaying);
+    showToast(isPlaying ? 'Música Synthwave activada 🎵' : 'Música pausada 🔇', 'info');
   };
 
   const handleFileChange = (e) => {
@@ -53,7 +64,7 @@ export const Header = ({
 
   return (
     <header className="sticky top-0 z-40 w-full bg-neutral-950/85 backdrop-blur-xl border-b border-neutral-800/80 transition-all duration-300">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2.5">
         <div className="flex flex-col lg:flex-row items-center justify-between gap-3">
           {/* Logo & Spider-Verse Branding */}
           <div
@@ -87,15 +98,15 @@ export const Header = ({
           </div>
 
           {/* Quick Action Navigation Bar */}
-          <div className="flex flex-wrap items-center justify-end gap-2 w-full lg:w-auto">
-            {/* Selector de Skins del Multiverso */}
+          <div className="flex flex-wrap items-center justify-end gap-1.5 w-full lg:w-auto">
+            {/* Skin Selector */}
             <select
               value={currentTheme.id}
               onChange={(e) => {
                 setTheme(e.target.value);
-                showToast(`Dimensión cambiada a: ${e.target.value.toUpperCase()} 🌌`, 'info');
+                showToast(`Skin cambiada a: ${e.target.value.toUpperCase()} 🌌`, 'info');
               }}
-              className="bg-neutral-900 border border-neutral-800 text-neutral-300 text-xs rounded-xl px-2.5 py-2 font-mono cursor-pointer focus:outline-none focus:border-red-500"
+              className="bg-neutral-900 border border-neutral-800 text-neutral-300 text-xs rounded-xl px-2 py-1.5 font-mono cursor-pointer focus:outline-none focus:border-red-500"
               title="Cambiar Skin / Universo"
             >
               {themes.map((t) => (
@@ -105,29 +116,50 @@ export const Header = ({
               ))}
             </select>
 
-            {/* Botón Trivia Minijuego */}
+            {/* Crear Variante */}
+            <button
+              onClick={onOpenCustomHero}
+              className="px-2.5 py-1.5 bg-neutral-900 border border-neutral-800 hover:border-emerald-500 text-emerald-400 rounded-xl text-xs font-bold font-mono transition-all hover:bg-emerald-950/30 flex items-center gap-1"
+              type="button"
+              title="Crear tu propia variante de superhéroe [Atajo: C]"
+            >
+              🧬 <span className="hidden sm:inline">Crear</span>
+            </button>
+
+            {/* Salón de la Fama */}
+            <button
+              onClick={onOpenLeaderboard}
+              className="px-2.5 py-1.5 bg-neutral-900 border border-neutral-800 hover:border-amber-500 text-amber-400 rounded-xl text-xs font-bold font-mono transition-all hover:bg-amber-950/30 flex items-center gap-1"
+              type="button"
+              title="Salón de la Fama / Top 10 [Atajo: L]"
+            >
+              🏆 <span className="hidden sm:inline">Top 10</span>
+            </button>
+
+            {/* Analítica */}
+            <button
+              onClick={onOpenAnalytics}
+              className="px-2.5 py-1.5 bg-neutral-900 border border-neutral-800 hover:border-blue-500 text-blue-400 rounded-xl text-xs font-bold font-mono transition-all hover:bg-blue-950/30 flex items-center gap-1"
+              type="button"
+              title="Dashboard de Analítica del Multiverso"
+            >
+              📊 <span className="hidden sm:inline">Métricas</span>
+            </button>
+
+            {/* Trivia Minijuego */}
             <button
               onClick={onOpenTrivia}
-              className="px-3 py-2 bg-gradient-to-r from-amber-600/30 to-red-600/30 border border-amber-500/50 hover:border-amber-400 text-amber-300 rounded-xl text-xs font-bold font-mono transition-all hover:scale-105"
+              className="px-2.5 py-1.5 bg-gradient-to-r from-amber-600/30 to-red-600/30 border border-amber-500/50 hover:border-amber-400 text-amber-300 rounded-xl text-xs font-bold font-mono transition-all hover:scale-105"
               type="button"
+              title="Minijuego de Trivia [Atajo: T]"
             >
               🎮 Trivia
             </button>
 
-            {/* Botón Salto al Multiverso (Random Hero) */}
-            <button
-              onClick={onRandomHero}
-              className="p-2 sm:px-3 sm:py-2 bg-neutral-900 border border-neutral-800 hover:border-red-500/80 text-red-400 rounded-xl text-xs font-bold font-mono transition-all hover:bg-red-950/20"
-              title="Descubrir un héroe aleatorio del Multiverso [Atajo: R]"
-              type="button"
-            >
-              🎲 <span className="hidden sm:inline">Aleatorio</span>
-            </button>
-
-            {/* Botón Batalla VS */}
+            {/* Batalla VS */}
             <button
               onClick={onOpenCompare}
-              className={`flex items-center gap-1.5 px-3 py-2 rounded-xl border text-xs font-bold font-mono transition-all ${
+              className={`flex items-center gap-1 px-2.5 py-1.5 rounded-xl border text-xs font-bold font-mono transition-all ${
                 compareHeroes.length > 0
                   ? 'bg-purple-950/60 border-purple-500 text-purple-300 shadow-md shadow-purple-600/30'
                   : 'bg-neutral-900 border-neutral-800 text-neutral-400 hover:text-white hover:border-purple-500/50'
@@ -141,73 +173,84 @@ export const Header = ({
               </span>
             </button>
 
-            {/* Botón Mi Equipo */}
+            {/* Mi Equipo */}
             <button
               onClick={onOpenTeam}
-              className={`flex items-center gap-1.5 px-3 py-2 rounded-xl border text-xs font-bold font-mono transition-all ${
+              className={`flex items-center gap-1 px-2.5 py-1.5 rounded-xl border text-xs font-bold font-mono transition-all ${
                 teamCount > 0
                   ? 'bg-blue-950/60 border-blue-500 text-blue-300 shadow-md shadow-blue-600/30'
                   : 'bg-neutral-900 border-neutral-800 text-neutral-400 hover:text-white hover:border-blue-500/50'
               }`}
-              title="Escuadrón del Multiverso [Atajo: E]"
+              title="Escuadrón [Atajo: E]"
               type="button"
             >
-              <span>🛡️ Equipo</span>
+              <span>🛡️</span>
               <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-blue-500/30 text-blue-300 font-black">
                 {teamCount}/5
               </span>
             </button>
 
-            {/* Botón Favoritos Toggle */}
+            {/* Favoritos */}
             <button
               onClick={() => setShowOnlyFavorites((prev) => !prev)}
               type="button"
-              className={`flex items-center gap-1.5 px-3 py-2 rounded-xl border text-xs font-bold font-mono transition-all ${
+              className={`flex items-center gap-1 px-2.5 py-1.5 rounded-xl border text-xs font-bold font-mono transition-all ${
                 showOnlyFavorites
                   ? 'bg-red-600 text-white border-red-500 shadow-lg shadow-red-600/40'
                   : 'bg-neutral-900 border-neutral-800 text-neutral-300 hover:text-white hover:border-red-500/50'
               }`}
             >
-              <span>❤️ Favs</span>
-              <span
-                className={`px-1.5 py-0.2 rounded-full text-[10px] font-black ${
-                  showOnlyFavorites ? 'bg-black/40 text-white' : 'bg-red-500/20 text-red-400'
-                }`}
-              >
+              <span>❤️</span>
+              <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-red-500/20 text-red-400 font-black">
                 {favoritesCount}
               </span>
             </button>
 
-            {/* Acciones y Atajos */}
-            <div className="flex items-center gap-1 border-l border-neutral-800 pl-2">
+            {/* Menú de Utilidades (Audio / Atajos / Archivos) */}
+            <div className="flex items-center gap-1 border-l border-neutral-800 pl-1.5">
+              {/* Botón Música Synthwave */}
               <button
-                onClick={onOpenShortcuts}
-                title="Atajos de Teclado [Atajo: ?]"
-                className="p-2 bg-neutral-900 hover:bg-neutral-800 text-neutral-400 hover:text-white rounded-xl border border-neutral-800 text-xs font-mono"
+                onClick={handleMusicToggle}
+                title={musicOn ? 'Pausar música Synthwave' : 'Reproducir música Synthwave'}
+                className={`p-1.5 rounded-xl border text-xs ${
+                  musicOn ? 'bg-purple-950/80 border-purple-500 text-purple-300 animate-pulse' : 'bg-neutral-900 border-neutral-800 text-neutral-400'
+                }`}
                 type="button"
               >
-                ⌨️
+                🎵
               </button>
+
               <button
                 onClick={handleSoundToggle}
-                title={soundOn ? 'Desactivar efectos de sonido [Atajo: M]' : 'Activar efectos de sonido [Atajo: M]'}
-                className="p-2 bg-neutral-900 hover:bg-neutral-800 text-neutral-400 hover:text-white rounded-xl border border-neutral-800 text-xs"
+                title={soundOn ? 'Silenciar efectos de sonido [Atajo: M]' : 'Activar efectos de sonido [Atajo: M]'}
+                className="p-1.5 bg-neutral-900 hover:bg-neutral-800 text-neutral-400 hover:text-white rounded-xl border border-neutral-800 text-xs"
                 type="button"
               >
                 {soundOn ? '🔊' : '🔇'}
               </button>
+
+              <button
+                onClick={onOpenShortcuts}
+                title="Atajos de Teclado [Atajo: ?]"
+                className="p-1.5 bg-neutral-900 hover:bg-neutral-800 text-neutral-400 hover:text-white rounded-xl border border-neutral-800 text-xs font-mono"
+                type="button"
+              >
+                ⌨️
+              </button>
+
               <button
                 onClick={handleExport}
                 title="Exportar base de datos a JSON"
-                className="p-2 bg-neutral-900 hover:bg-neutral-800 text-neutral-400 hover:text-white rounded-xl border border-neutral-800 text-xs"
+                className="p-1.5 bg-neutral-900 hover:bg-neutral-800 text-neutral-400 hover:text-white rounded-xl border border-neutral-800 text-xs"
                 type="button"
               >
                 📥
               </button>
+
               <button
                 onClick={() => fileInputRef.current?.click()}
                 title="Importar base de datos desde JSON"
-                className="p-2 bg-neutral-900 hover:bg-neutral-800 text-neutral-400 hover:text-white rounded-xl border border-neutral-800 text-xs"
+                className="p-1.5 bg-neutral-900 hover:bg-neutral-800 text-neutral-400 hover:text-white rounded-xl border border-neutral-800 text-xs"
                 type="button"
               >
                 📤

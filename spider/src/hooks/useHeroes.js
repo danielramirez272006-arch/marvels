@@ -2,8 +2,19 @@
 import { useEffect, useMemo, useState } from 'react';
 import { fetchHeroes } from '../services/api';
 
+const CUSTOM_HEROES_KEY = 'spider_custom_heroes';
+
 export const useHeroes = (itemsPerPage = 12) => {
-  const [heroes, setHeroes] = useState([]);
+  const [apiHeroes, setApiHeroes] = useState([]);
+  const [customHeroes, setCustomHeroes] = useState(() => {
+    try {
+      const stored = localStorage.getItem(CUSTOM_HEROES_KEY);
+      return stored ? JSON.parse(stored) : [];
+    } catch {
+      return [];
+    }
+  });
+
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -25,7 +36,7 @@ export const useHeroes = (itemsPerPage = 12) => {
       try {
         const data = await fetchHeroes();
         if (isMounted) {
-          setHeroes(data);
+          setApiHeroes(data);
         }
       } catch (err) {
         if (isMounted) {
@@ -45,7 +56,23 @@ export const useHeroes = (itemsPerPage = 12) => {
     };
   }, []);
 
-  // Lista única de Editoriales más comunes
+  // Agregar un héroe personalizado
+  const addCustomHero = (hero) => {
+    setCustomHeroes((prev) => {
+      const updated = [hero, ...prev];
+      try {
+        localStorage.setItem(CUSTOM_HEROES_KEY, JSON.stringify(updated));
+      } catch {}
+      return updated;
+    });
+  };
+
+  // Combinar héroes de la API con los personalizados creados por el usuario
+  const heroes = useMemo(() => {
+    return [...customHeroes, ...apiHeroes];
+  }, [customHeroes, apiHeroes]);
+
+  // Lista única de Editoriales
   const availablePublishers = useMemo(() => {
     const counts = {};
     heroes.forEach((h) => {
@@ -55,7 +82,6 @@ export const useHeroes = (itemsPerPage = 12) => {
       }
     });
 
-    // Ordenar por cantidad y tomar los más relevantes
     return Object.entries(counts)
       .sort((a, b) => b[1] - a[1])
       .map(([pub]) => pub);
@@ -78,7 +104,7 @@ export const useHeroes = (itemsPerPage = 12) => {
   const filteredHeroes = useMemo(() => {
     let result = [...heroes];
 
-    // 1. Filtro por término de búsqueda
+    // 1. Filtro por búsqueda
     const term = searchTerm.trim().toLowerCase();
     if (term) {
       result = result.filter((hero) => {
@@ -94,7 +120,7 @@ export const useHeroes = (itemsPerPage = 12) => {
       result = result.filter((hero) => hero.biography?.publisher === selectedPublisher);
     }
 
-    // 3. Filtro por Bando (Alineación)
+    // 3. Filtro por Bando
     if (selectedAlignment !== 'ALL') {
       result = result.filter((hero) => (hero.biography?.alignment || 'neutral') === selectedAlignment);
     }
@@ -134,7 +160,6 @@ export const useHeroes = (itemsPerPage = 12) => {
     setCurrentPage(1);
   }, [searchTerm, selectedPublisher, selectedAlignment, selectedGender, sortBy]);
 
-  // Cálculos matemáticos de paginación
   const totalResults = filteredHeroes.length;
   const totalPages = Math.max(1, Math.ceil(totalResults / itemsPerPage));
 
@@ -176,7 +201,6 @@ export const useHeroes = (itemsPerPage = 12) => {
     setCurrentPage(1);
   };
 
-  // Salto al Multiverso: Obtener un héroe aleatorio
   const getRandomHero = () => {
     if (heroes.length === 0) return null;
     const randomIndex = Math.floor(Math.random() * heroes.length);
@@ -202,6 +226,7 @@ export const useHeroes = (itemsPerPage = 12) => {
     availablePublishers,
     resetFilters,
     getRandomHero,
+    addCustomHero,
     currentPage,
     totalPages,
     totalResults,
